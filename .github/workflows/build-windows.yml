@@ -5,6 +5,9 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -72,3 +75,20 @@ jobs:
         with:
           name: PGL_Mocap_win64
           path: dist/PGL Mocap
+
+      - name: Pack zip
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: Compress-Archive -Path "dist/PGL Mocap" -DestinationPath "dist/PGL_Mocap_win64.zip"
+
+      # Готовый архив публикуется в Releases (главная страница репозитория → справа «Releases»)
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ver = (Select-String -Path pglmocap/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
+          $tag = "v$ver-build$env:GITHUB_RUN_NUMBER"
+          $notes = "PGL Mocap $ver (сборка $env:GITHUB_RUN_NUMBER).`n`nСкачайте PGL_Mocap_win64.zip, распакуйте и запустите 'PGL Mocap.exe'. Инструкция — README.md внутри архива."
+          gh release create $tag "dist/PGL_Mocap_win64.zip" --title "PGL Mocap $ver (сборка $env:GITHUB_RUN_NUMBER)" --notes $notes --latest --target $env:GITHUB_SHA
