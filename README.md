@@ -1,3 +1,5 @@
+<img src="assets/pgl_mocap_256.png" width="96" align="right">
+
 # PGL Mocap
 
 Трекинг позы человека по видео (без датчиков и костюмов) с отправкой координат в **Aximmetry** по OSC.

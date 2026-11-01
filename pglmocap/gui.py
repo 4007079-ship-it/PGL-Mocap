@@ -1,4 +1,5 @@
 """Окно приложения PGL Mocap (tkinter)."""
+import sys
 import threading
 import tkinter as tk
 import urllib.request
@@ -17,7 +18,7 @@ BG = "#16181d"
 PANEL = "#1f2229"
 FG = "#e6e8ec"
 MUTED = "#8b93a1"
-ACCENT = "#3fb68b"
+ACCENT = "#a3e635"
 DANGER = "#e5534b"
 
 RESTART_KEYS = {
@@ -48,9 +49,16 @@ class App:
         root.title(f"{APP_NAME} {__version__}")
         root.configure(bg=BG)
         root.minsize(1100, 640)
+        self._logo_small = None
         try:
+            png = resource_dir() / "assets" / "pgl_mocap_256.png"
+            if png.exists():
+                logo = Image.open(png)
+                self._icon_photo = ImageTk.PhotoImage(logo.resize((64, 64), Image.LANCZOS))
+                root.iconphoto(True, self._icon_photo)          # иконка окна (Windows и Linux)
+                self._logo_small = ImageTk.PhotoImage(logo.resize((28, 28), Image.LANCZOS))
             ico = resource_dir() / "assets" / "pgl_mocap.ico"
-            if ico.exists():
+            if ico.exists() and sys.platform.startswith("win"):
                 root.iconbitmap(default=str(ico))
         except Exception:
             pass
@@ -83,7 +91,7 @@ class App:
         st.map("TButton", background=[("active", "#383e4a")])
         st.configure("Start.TButton", background=ACCENT, foreground="#0d1411",
                      font=("Segoe UI Semibold", 12), padding=(10, 10))
-        st.map("Start.TButton", background=[("active", "#4fcf9f")])
+        st.map("Start.TButton", background=[("active", "#bef264")])
         st.configure("Stop.TButton", background=DANGER, foreground="#ffffff",
                      font=("Segoe UI Semibold", 12), padding=(10, 10))
         st.map("Stop.TButton", background=[("active", "#f06b63")])
@@ -102,7 +110,7 @@ class App:
         self.root.option_add("*TCombobox*Listbox.selectForeground", "#0d1411")
         st.configure("Horizontal.TScale", background=ACCENT, troughcolor="#2a2e37",
                      bordercolor="#333844", lightcolor=ACCENT, darkcolor=ACCENT)
-        st.map("Horizontal.TScale", background=[("active", "#4fcf9f")])
+        st.map("Horizontal.TScale", background=[("active", "#bef264")])
 
     # ------------------------------------------------------------------ разметка
     def _build(self):
@@ -113,6 +121,8 @@ class App:
 
         head = ttk.Frame(outer, style="Root.TFrame")
         head.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        if self._logo_small is not None:
+            ttk.Label(head, image=self._logo_small, style="Title.TLabel").pack(side="left", padx=(0, 10))
         ttk.Label(head, text=APP_NAME, style="Title.TLabel").pack(side="left")
         self.status_lbl = ttk.Label(head, text="Остановлено", style="Status.TLabel")
         self.status_lbl.pack(side="right")
