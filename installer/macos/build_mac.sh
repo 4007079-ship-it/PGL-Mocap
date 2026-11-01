@@ -48,5 +48,12 @@ rm -rf build/dmg; mkdir -p build/dmg
 cp -R "$APP" build/dmg/
 ln -s /Applications build/dmg/Applications
 rm -f "$DMG"
-hdiutil create -volname "PGL Mocap" -srcfolder build/dmg -ov -format UDZO "$DMG"
+# hdiutil на серверах GitHub иногда отвечает «Resource busy» — повторяем
+for i in 1 2 3 4 5 6; do
+  if hdiutil create -volname "PGL Mocap" -srcfolder build/dmg -fs HFS+ -ov -format UDZO "$DMG"; then break; fi
+  echo "hdiutil: попытка $i не удалась, повтор через 10 с"
+  hdiutil info | grep -E "^/dev/disk" | awk '{print $1}' | xargs -I{} hdiutil detach {} -force 2>/dev/null || true
+  sleep 10
+  [ "$i" = 6 ] && exit 1
+done
 ls -la "$DMG"
