@@ -29,6 +29,21 @@ jobs:
             Invoke-WebRequest $url -OutFile "models/pose_landmarker_$m.task"
           }
 
+      - name: Tracking test on a real photo
+        shell: pwsh
+        run: |
+          $urls = @(
+            "https://storage.googleapis.com/mediapipe-assets/pose.jpg",
+            "https://storage.googleapis.com/mediapipe-tasks/pose_landmarker/pose.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Usain_Bolt_Rio_100m_final_2016k.jpg/640px-Usain_Bolt_Rio_100m_final_2016k.jpg"
+          )
+          $ok = $false
+          foreach ($u in $urls) {
+            try { Invoke-WebRequest $u -OutFile test_person.jpg -Headers @{ "User-Agent" = "PGL-Mocap-CI" }; $ok = $true; Write-Host "Photo: $u"; break } catch { Write-Host "skip $u" }
+          }
+          if (-not $ok) { Write-Error "No test photo available"; exit 1 }
+          python tools/track_image.py test_person.jpg full
+
       - name: Build exe
         run: >
           python -m PyInstaller --noconfirm --clean --windowed
