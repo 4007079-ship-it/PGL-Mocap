@@ -15,7 +15,7 @@
   /pglmocap/pN/hand_l/<точка>        x y z  (wrist, thumb_tip, index_tip, ... — 21 точка)
 Мимика (если включена):
   /pglmocap/pN/face/detected         1 / 0
-  /pglmocap/pN/face/<коэффициент>    0..1   (eyeBlinkLeft, jawOpen, mouthSmileLeft, ... — 52 шт., ARKit)
+  /pglmocap/pN/face/<коэффициент>    0..1   (eyeBlinkLeft, jawOpen, mouthSmileLeft, ... — 51 шт., ARKit)
   /pglmocap/pN/face/head             рыскание тангаж крен, градусы
 """
 import numpy as np

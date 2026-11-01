@@ -25,7 +25,7 @@ DEFAULTS = {
     "hold_seconds": 0.3,
     "use_gpu": False,
     "track_hands": False,           # пальцы рук (21 точка на руку)
-    "track_face": False,            # мимика лица (52 коэффициента ARKit + поворот головы)
+    "track_face": False,            # мимика лица (51 коэффициент ARKit + поворот головы)
     # OSC
     "osc_ip": "127.0.0.1",
     "osc_port": 7000,
