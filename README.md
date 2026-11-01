@@ -13,6 +13,7 @@
 - **Любой видеовход:** веб-камера, карта захвата (Elgato, Magewell, AVerMedia, Blackmagic и др.),
   **NDI**-источник по сети (в том числе телефон с приложением NDI HX Camera), видеофайл.
 - **33 точки тела**, до **4 человек** одновременно, у каждого свой стабильный номер.
+- **Пальцы рук** (21 точка на руку) и **мимика лица** (52 коэффициента ARKit: моргание, взгляд, рот, улыбка, брови + поворот головы) — включаются отдельными галочками.
 - **Aximmetry:** координаты каждой точки по OSC — сразу в модули *OSC Vector* / *OSC Scalar*.
 - **Unreal Engine 5.6+:** каждая точка — объект Live Link, плюс скелет из 17 костей.
 - Можно отправлять в Aximmetry и Unreal одновременно.
@@ -72,6 +73,8 @@ cd "PGL Mocap"
    - *NDI* — нажмите ↻ и выберите источник в сети.
    - *Видеофайл* — для проверки без камеры.
 2. **Трекинг** — модель (*lite* — быстрая, *full* — баланс, *heavy* — точная), сколько людей искать, сглаживание.
+   Здесь же включаются **Пальцы рук** и **Мимика лица**. Каждая функция добавляет нагрузку — включайте только нужное.
+   Для пальцев лучше камера 1080p и человек ближе к камере (руки должны занимать заметную часть кадра).
 3. **OSC / Aximmetry** и/или **Unreal Live Link** — куда отправлять (IP и порт).
 4. **Старт.** В окне виден скелет, сверху — кадры в секунду, число людей и скорость отправки.
 
@@ -114,6 +117,29 @@ left_foot_index, right_foot_index`
 
 В режиме *Основные 13 точек*: nose, плечи, локти, запястья, бёдра, колени, лодыжки.
 
+### Пальцы и мимика
+
+Приходят, только если включены на вкладке «Трекинг». `l` / `r` — левая / правая рука *самого человека*.
+
+| Адрес | Значение |
+|---|---|
+| `/pglmocap/pN/hand_l/detected` | 1 — рука найдена, 0 — нет |
+| `/pglmocap/pN/hand_l/<точка>` | X Y Z точки руки, в тех же координатах, что и тело |
+| `/pglmocap/pN/face/detected` | 1 — лицо найдено, 0 — нет |
+| `/pglmocap/pN/face/<коэффициент>` | 0..1, например `eyeBlinkLeft`, `jawOpen`, `mouthSmileLeft` |
+| `/pglmocap/pN/face/head` | поворот головы: рыскание, тангаж, крен (градусы) |
+
+**Точки руки:** `wrist, thumb_cmc, thumb_mcp, thumb_ip, thumb_tip, index_mcp, index_pip, index_dip, index_tip,
+middle_mcp, middle_pip, middle_dip, middle_tip, ring_mcp, ring_pip, ring_dip, ring_tip,
+pinky_mcp, pinky_pip, pinky_dip, pinky_tip` (`_tip` — кончики пальцев).
+
+**Коэффициенты мимики** (стандарт ARKit): `eyeBlinkLeft/Right`, `eyeLookUp/Down/In/OutLeft/Right`, `eyeSquintLeft/Right`,
+`eyeWideLeft/Right`, `jawOpen`, `jawLeft/Right/Forward`, `mouthClose`, `mouthSmileLeft/Right`, `mouthFrownLeft/Right`,
+`mouthPucker`, `mouthFunnel`, `mouthLeft/Right`, `mouthPressLeft/Right`, `mouthStretchLeft/Right`,
+`mouthRollLower/Upper`, `mouthShrugLower/Upper`, `mouthUpperUpLeft/Right`, `mouthLowerDownLeft/Right`,
+`mouthDimpleLeft/Right`, `browDownLeft/Right`, `browInnerUp`, `browOuterUpLeft/Right`, `cheekPuff`,
+`cheekSquintLeft/Right`, `noseSneerLeft/Right`.
+
 ### Координаты
 
 - **Кадр** (по умолчанию) — где человек находится в изображении: центр кадра = 0, высота кадра = 1,
@@ -153,6 +179,8 @@ left_foot_index, right_foot_index`
 | `PGL_P1_shoulder_center` | Transform | центр между плечами |
 | `PGL_P1_<точка>` | Transform | любая из 33 точек: `PGL_P1_right_wrist`, `PGL_P1_nose`, … |
 | `PGL_P1` | Animation | скелет из 17 костей с поворотами |
+| `PGL_P1_hand_r_index_tip` | Transform | точки пальцев (если включены): `PGL_P1_hand_l_<точка>`, `PGL_P1_hand_r_<точка>` |
+| `PGL_P1_face` | Basic | мимика (если включена): кривые `EyeBlinkLeft`, `JawOpen`, … — имена как у Live Link Face, плюс `HeadYawDeg`, `HeadPitchDeg`, `HeadRollDeg` |
 
 `P1`…`P4` — номер человека, префикс `PGL` меняется в настройках. Когда человек уходит из кадра,
 его субъекты исчезают и появляются снова, когда он вернётся.

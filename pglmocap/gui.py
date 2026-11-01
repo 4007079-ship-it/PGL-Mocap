@@ -10,7 +10,8 @@ from PIL import Image, ImageTk
 
 from . import APP_NAME, __version__
 from .engine import Engine
-from .paths import MODEL_FILES, MODEL_URLS, available_models, resource_dir, settings_dir
+from .paths import (EXTRA_MODEL_FILES, EXTRA_MODEL_URLS, MODEL_FILES, MODEL_URLS, available_models,
+                    find_extra_model, resource_dir, settings_dir)
 from .settings import load_settings, save_settings
 from .sources import list_cameras, list_ndi_sources, ndi_available
 
@@ -24,7 +25,7 @@ DANGER = "#e5534b"
 RESTART_KEYS = {
     "source_type", "camera_index", "camera_backend", "camera_resolution", "camera_fps",
     "camera_mjpg", "ndi_source", "file_path", "file_loop", "model", "num_poses",
-    "min_confidence", "use_gpu",
+    "min_confidence", "use_gpu", "track_hands", "track_face",
 }
 
 SOURCE_TYPES = [("camera", "Камера / карта захвата"), ("ndi", "NDI"), ("file", "Видеофайл")]
@@ -48,7 +49,7 @@ class App:
 
         root.title(f"{APP_NAME} {__version__}")
         root.configure(bg=BG)
-        root.minsize(1100, 640)
+        root.minsize(1100, 680)
         self._logo_small = None
         try:
             png = resource_dir() / "assets" / "pgl_mocap_256.png"
@@ -145,9 +146,10 @@ class App:
         nb.add(self._tab_unreal(nb), text="Unreal Live Link")
 
         self.hint_lbl = ttk.Label(right, text="", style="Status.TLabel", wraplength=380)
-        self.hint_lbl.pack(fill="x", pady=(8, 0))
         self.start_btn = ttk.Button(right, text="▶  Старт", style="Start.TButton", command=self._toggle)
-        self.start_btn.pack(fill="x", pady=(8, 0))
+        # кнопка и подсказка закрепляются внизу первыми — они всегда видны, даже если окно невысокое
+        self.start_btn.pack(side="bottom", fill="x", pady=(8, 0), before=nb)
+        self.hint_lbl.pack(side="bottom", fill="x", pady=(8, 0), before=nb)
 
     def _grid_row(self, parent, row, label, widget, hint=None):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=4, padx=(0, 10))
@@ -281,19 +283,29 @@ class App:
         self.model_cb.bind("<<ComboboxSelected>>", self._on_model_selected)
         ttk.Button(row, text="Скачать", command=self._download_models).grid(row=0, column=1, padx=(6, 0))
         self._grid_row(f, r, "Модель", row,
-                       "lite — самая быстрая, full — баланс, heavy — точнее, но тяжелее."); r += 2
+                       "lite — быстрая, full — баланс, heavy — точная."); r += 2
         sp = ttk.Spinbox(f, from_=1, to=4, textvariable=self._var("num_poses", "int"), width=6)
         self._grid_row(f, r, "Людей в кадре (макс.)", sp); r += 1
         pw = ttk.Combobox(f, textvariable=self._var("proc_width", "int"),
                           values=[320, 480, 640, 960, 1280], width=8)
         self._grid_row(f, r, "Ширина анализа, px", pw,
-                       "Кадр уменьшается до этой ширины перед трекингом. Меньше — быстрее."); r += 2
+                       "Меньше — быстрее."); r += 2
         self._slider(f, r, "Порог уверенности", "min_confidence", 0.1, 0.95); r += 1
         self._slider(f, r, "Сглаживание", "smoothing", 0.0, 1.0); r += 1
         self._slider(f, r, "Удержание при потере, с", "hold_seconds", 0.0, 2.0); r += 1
         ttk.Checkbutton(f, text="Пробовать GPU (если не выйдет — CPU)",
                         variable=self._var("use_gpu", "bool")).grid(row=r, column=0, columnspan=2,
                                                                     sticky="w", pady=6); r += 1
+        ttk.Separator(f).grid(row=r, column=0, columnspan=2, sticky="ew", pady=4); r += 1
+        ttk.Checkbutton(f, text="Пальцы рук (21 точка на руку)",
+                        variable=self._var("track_hands", "bool")).grid(row=r, column=0, columnspan=2,
+                                                                        sticky="w", pady=1); r += 1
+        ttk.Checkbutton(f, text="Мимика лица: глаза, рот, брови, поворот головы",
+                        variable=self._var("track_face", "bool")).grid(row=r, column=0, columnspan=2,
+                                                                       sticky="w", pady=1); r += 1
+        ttk.Label(f, style="Muted.TLabel", wraplength=340,
+                  text="Каждая функция добавляет нагрузку. Для пальцев — 1080p и человек ближе.").grid(
+            row=r, column=0, columnspan=2, sticky="w"); r += 1
         return f
 
     def _slider(self, f, r, label, key, lo, hi):
@@ -340,7 +352,9 @@ class App:
         help_txt = ("В Aximmetry: Edit → Manage Devices → OSC → Server, порт как здесь.\n"
                     "В графе: модуль OSC Vector, адрес например\n"
                     "  /pglmocap/p1/hip_center\n  /pglmocap/p1/right_wrist\n"
-                    "Флаг наличия человека: OSC Scalar /pglmocap/p1/detected")
+                    "Флаг наличия человека: OSC Scalar /pglmocap/p1/detected\n"
+                    "Пальцы: /pglmocap/p1/hand_r/index_tip\n"
+                    "Мимика: OSC Scalar /pglmocap/p1/face/jawOpen")
         ttk.Label(f, text=help_txt, style="Muted.TLabel", justify="left").grid(
             row=r, column=0, columnspan=2, sticky="w")
         return f
@@ -367,6 +381,8 @@ class App:
                     "  PGL_P1            — скелет (Animation)\n"
                     "  PGL_P1_right_wrist — точка (Transform)\n"
                     "  PGL_P1_hip_center  — центр человека\n"
+                    "  PGL_P1_hand_r_index_tip — палец\n"
+                    "  PGL_P1_face        — мимика (кривые ARKit)\n"
                     "Координаты: см, X вперёд, Y вправо, Z вверх, пол = 0.")
         ttk.Label(f, text=help_txt, style="Muted.TLabel", justify="left").grid(
             row=r, column=0, columnspan=2, sticky="w")
@@ -460,11 +476,13 @@ class App:
 
         def work():
             errs = []
-            for k, name in MODEL_FILES.items():
+            todo = [(k, n, MODEL_URLS[k]) for k, n in MODEL_FILES.items()] + \
+                   [(k, n, EXTRA_MODEL_URLS[k]) for k, n in EXTRA_MODEL_FILES.items()]
+            for k, name, url in todo:
                 if (dest / name).exists():
                     continue
                 try:
-                    urllib.request.urlretrieve(MODEL_URLS[k], dest / (name + ".part"))
+                    urllib.request.urlretrieve(url, dest / (name + ".part"))
                     (dest / (name + ".part")).replace(dest / name)
                 except Exception as e:
                     errs.append(f"{k}: {e}")
@@ -480,6 +498,11 @@ class App:
                 messagebox.showwarning(APP_NAME, "Нет файлов моделей. Нажмите «Скачать» на вкладке «Трекинг» "
                                                  "или положите .task-файлы в папку models рядом с программой.")
                 return
+            for key, kind in (("track_hands", "hand"), ("track_face", "face")):
+                if self.s.get(key) and find_extra_model(kind) is None:
+                    messagebox.showwarning(APP_NAME, f"Нет модели {EXTRA_MODEL_FILES[kind]}. "
+                                                     "Нажмите «Скачать» на вкладке «Трекинг».")
+                    return
             save_settings(self.s)
             self._dirty_restart = False
             self.engine.start()

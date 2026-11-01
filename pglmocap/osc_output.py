@@ -9,10 +9,19 @@
   /pglmocap/pN/shoulder_center       середина между плечами
   /pglmocap/pN/screen_pos            центр бёдер в координатах кадра (всегда, в любом режиме)
   /pglmocap/pN/all                   все точки одним сообщением (если включено)
+
+Пальцы (если включены), сторона l / r — левая / правая рука самого человека:
+  /pglmocap/pN/hand_l/detected       1 / 0
+  /pglmocap/pN/hand_l/<точка>        x y z  (wrist, thumb_tip, index_tip, ... — 21 точка)
+Мимика (если включена):
+  /pglmocap/pN/face/detected         1 / 0
+  /pglmocap/pN/face/<коэффициент>    0..1   (eyeBlinkLeft, jawOpen, mouthSmileLeft, ... — 52 шт., ARKit)
+  /pglmocap/pN/face/head             рыскание тангаж крен, градусы
 """
 import numpy as np
 from pythonosc.udp_client import SimpleUDPClient
 
+from .extras import HAND_POINTS, SIDES
 from .tracker import CORE_JOINTS, IDX, LANDMARK_NAMES
 
 
@@ -91,7 +100,31 @@ class OscOutput:
             scr = transform(screen, s)
             sp = (scr[IDX["left_hip"]] + scr[IDX["right_hip"]]) / 2
             c.send_message(f"{base}/screen_pos", [float(v) for v in sp])
-            n += 4
+            n += 3
+            if s.get("track_hands"):
+                for side in SIDES:
+                    hand = (pose.hands or {}).get(side)
+                    hb = f"{base}/hand_{side}"
+                    c.send_message(f"{hb}/detected", 1.0 if hand is not None else 0.0)
+                    n += 1
+                    if hand is None:
+                        continue
+                    hraw = _screen_coords(hand.norm, aspect) if s["coord_mode"] == "screen" else _world_coords(hand.world)
+                    hp = transform(hraw, s)
+                    for k, name in enumerate(HAND_POINTS):
+                        c.send_message(f"{hb}/{name}", [float(v) for v in hp[k]])
+                    n += len(HAND_POINTS)
+            if s.get("track_face"):
+                face = pose.face
+                c.send_message(f"{base}/face/detected", 1.0 if face is not None else 0.0)
+                n += 1
+                if face is not None:
+                    for name, val in face.shapes.items():
+                        c.send_message(f"{base}/face/{name}", float(val))
+                    n += len(face.shapes)
+                    if face.head is not None:
+                        c.send_message(f"{base}/face/head", [float(v) for v in face.head])
+                        n += 1
             if s["send_all_vector"]:
                 c.send_message(f"{base}/all", [float(v) for v in pts[[IDX[x] for x in names]].ravel()])
                 n += 1

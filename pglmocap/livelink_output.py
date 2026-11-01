@@ -21,6 +21,10 @@
   "lost": [2]                                    номера людей, которые пропали из кадра
 }
 
+Если включены пальцы — в "points" добавляются точки рук: "hand_l_index_tip", "hand_r_thumb_tip", ...
+Если включена мимика — у человека появляется "curves": {"EyeBlinkLeft": 0.1, "JawOpen": 0.4, ...}
+(имена ARKit с большой буквы, как у Live Link Face) и HeadYawDeg / HeadPitchDeg / HeadRollDeg.
+
 Соглашение для костей: ось X кости направлена вдоль кости к следующему суставу,
 ось Z — ось сгиба (для рук/ног) или «вправо» (для корпуса, шеи, головы, стоп).
 В «нулевой» позе (все повороты единичные) все кости смотрят вдоль +X.
@@ -30,6 +34,7 @@ import socket
 
 import numpy as np
 
+from .extras import HAND_POINTS
 from .tracker import CORE_JOINTS, IDX, LANDMARK_NAMES
 
 # ------------------------------------------------------------------ скелет
@@ -221,16 +226,32 @@ class LiveLinkOutput:
             points = {n: [round(float(v), 3) for v in pts[IDX[n]]] for n in names}
             points["hip_center"] = [round(float(v), 3) for v in hip_c]
             points["shoulder_center"] = [round(float(v), 3) for v in sh_c]
+            if pose.hands:
+                dz = pts[0, 2] - mediapipe_world_to_ue(pose.world[:1])[0, 2]   # тот же сдвиг пола, что у тела
+                for side, hand in pose.hands.items():
+                    if hand is None:
+                        continue
+                    hp = mediapipe_world_to_ue(hand.world)
+                    hp[:, 2] += dz
+                    for k, name in enumerate(HAND_POINTS):
+                        points[f"hand_{side}_{name}"] = [round(float(v), 3) for v in hp[k]]
             bones, _ = compute_bones(pts)
             bones[0][:3] = [float(v) for v in root]        # root несёт перемещение по площадке
-            persons.append({
+            person = {
                 "id": pid,
                 "root": [round(float(v), 3) for v in root],
                 "points": points,
                 "names": BONE_NAMES,
                 "parents": BONE_PARENTS,
                 "bones": [[round(v, 5) for v in b] for b in bones],
-            })
+            }
+            if pose.face is not None:
+                curves = {k[:1].upper() + k[1:]: round(float(v), 4) for k, v in pose.face.shapes.items()}
+                if pose.face.head is not None:
+                    curves["HeadYawDeg"], curves["HeadPitchDeg"], curves["HeadRollDeg"] = \
+                        (round(float(v), 3) for v in pose.face.head)
+                person["curves"] = curves
+            persons.append(person)
         lost = sorted(self._seen - now)
         self._seen = now
         packet = {"v": 1, "prefix": s.get("ll_prefix", "PGL") or "PGL", "persons": persons, "lost": lost}

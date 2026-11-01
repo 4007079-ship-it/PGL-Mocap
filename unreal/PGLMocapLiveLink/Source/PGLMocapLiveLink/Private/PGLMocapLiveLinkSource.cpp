@@ -3,6 +3,7 @@
 #include "ILiveLinkClient.h"
 #include "Roles/LiveLinkAnimationRole.h"
 #include "Roles/LiveLinkAnimationTypes.h"
+#include "Roles/LiveLinkBasicRole.h"
 #include "Roles/LiveLinkTransformRole.h"
 #include "Roles/LiveLinkTransformTypes.h"
 
@@ -297,6 +298,53 @@ void FPGLMocapLiveLinkSource::HandlePerson(const FString& Prefix, const TSharedP
 			LiveLinkClient->PushSubjectFrameData_AnyThread(Key, MoveTemp(FrameDataStruct));
 		}
 	}
+
+	HandleCurves(Base, Person, Owned);
+}
+
+void FPGLMocapLiveLinkSource::HandleCurves(const FString& Base, const TSharedPtr<FJsonObject>& Person, TArray<FName>& Owned)
+{
+	// ---------------------------------------------------------------- face (Basic role, ARKit curve names)
+	const TSharedPtr<FJsonObject>* Curves = nullptr;
+	if (!Person->TryGetObjectField(TEXT("curves"), Curves) || Curves == nullptr || !Curves->IsValid())
+	{
+		return;
+	}
+	ILiveLinkClient* LiveLinkClient = Client.load();
+
+	TArray<FName> Names;
+	TArray<float> Values;
+	Names.Reserve((*Curves)->Values.Num());
+	Values.Reserve((*Curves)->Values.Num());
+	for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*Curves)->Values)
+	{
+		if (!Pair.Value.IsValid())
+		{
+			continue;
+		}
+		Names.Add(FName(*Pair.Key));
+		Values.Add(static_cast<float>(Pair.Value->AsNumber()));
+	}
+	if (Names.Num() == 0)
+	{
+		return;
+	}
+
+	const FName SubjectName(*FString::Printf(TEXT("%s_face"), *Base));
+	const FLiveLinkSubjectKey Key(SourceGuid, SubjectName);
+	const TArray<FName>* Known = CurveSubjects.Find(SubjectName);
+	if (Known == nullptr || *Known != Names)
+	{
+		FLiveLinkStaticDataStruct StaticDataStruct(FLiveLinkBaseStaticData::StaticStruct());
+		StaticDataStruct.Cast<FLiveLinkBaseStaticData>()->PropertyNames = Names;
+		LiveLinkClient->PushSubjectStaticData_AnyThread(Key, ULiveLinkBasicRole::StaticClass(), MoveTemp(StaticDataStruct));
+		CurveSubjects.Add(SubjectName, Names);
+		Owned.AddUnique(SubjectName);
+	}
+
+	FLiveLinkFrameDataStruct FrameDataStruct(FLiveLinkBaseFrameData::StaticStruct());
+	FrameDataStruct.Cast<FLiveLinkBaseFrameData>()->PropertyValues = MoveTemp(Values);
+	LiveLinkClient->PushSubjectFrameData_AnyThread(Key, MoveTemp(FrameDataStruct));
 }
 
 void FPGLMocapLiveLinkSource::RemovePerson(const FString& Prefix, int32 PersonId)
@@ -312,6 +360,7 @@ void FPGLMocapLiveLinkSource::RemovePerson(const FString& Prefix, int32 PersonId
 		LiveLinkClient->RemoveSubject_AnyThread(FLiveLinkSubjectKey(SourceGuid, SubjectName));
 		SkeletonSubjects.Remove(SubjectName);
 		TransformSubjects.Remove(SubjectName);
+		CurveSubjects.Remove(SubjectName);
 	}
 }
 

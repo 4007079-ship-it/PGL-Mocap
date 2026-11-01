@@ -42,12 +42,14 @@ SKELETON = [
 
 class Pose:
     """Одна поза: нормализованные (по кадру) и мировые (метры) координаты."""
-    __slots__ = ("norm", "world", "vis")
+    __slots__ = ("norm", "world", "vis", "hands", "face")
 
     def __init__(self, norm, world, vis):
         self.norm = norm      # (33, 3): x, y в 0..1 по кадру, z — относительная глубина
         self.world = world    # (33, 3): метры, центр между бёдрами
         self.vis = vis        # (33,)  : видимость 0..1
+        self.hands = None     # {"l": Hand|None, "r": Hand|None}, если включены пальцы
+        self.face = None      # Face|None, если включена мимика
 
 
 class PoseTracker:

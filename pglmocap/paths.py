@@ -31,12 +31,31 @@ MODEL_URLS = {
 }
 
 
+EXTRA_MODEL_FILES = {
+    "hand": "hand_landmarker.task",
+    "face": "face_landmarker.task",
+}
+EXTRA_MODEL_URLS = {
+    "hand": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
+    "face": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+}
+
+
 def model_search_dirs():
     return [exe_dir() / "models", resource_dir() / "models", settings_dir() / "models"]
 
 
 def find_model(kind: str):
     name = MODEL_FILES[kind]
+    for d in model_search_dirs():
+        p = d / name
+        if p.is_file():
+            return p
+    return None
+
+
+def find_extra_model(kind: str):
+    name = EXTRA_MODEL_FILES[kind]
     for d in model_search_dirs():
         p = d / name
         if p.is_file():

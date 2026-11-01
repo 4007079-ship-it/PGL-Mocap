@@ -38,6 +38,7 @@ public:
 private:
 	void HandlePacket(const uint8* Data, int32 Size);
 	void HandlePerson(const FString& Prefix, const TSharedPtr<FJsonObject>& Person);
+	void HandleCurves(const FString& Base, const TSharedPtr<FJsonObject>& Person, TArray<FName>& Owned);
 	void RemovePerson(const FString& Prefix, int32 PersonId);
 
 	std::atomic<ILiveLinkClient*> Client{nullptr};
@@ -52,6 +53,7 @@ private:
 	// State, touched only by the receiver thread
 	TMap<FName, TArray<FName>> SkeletonSubjects;   // skeleton subject -> bone names
 	TSet<FName> TransformSubjects;                 // point subjects
+	TMap<FName, TArray<FName>> CurveSubjects;      // face subject -> curve names
 	TMap<int32, TArray<FName>> PersonSubjects;     // person id -> all of its subjects
 
 	// Shown in the Live Link window

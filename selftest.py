@@ -53,6 +53,17 @@ def run(out=print):
         tr.close()
         return f"поз: {len(poses)}, {dt * 1000:.0f} мс/кадр"
 
+    def extras():
+        from pglmocap.paths import find_extra_model
+        found = [k for k in ("hand", "face") if find_extra_model(k)]
+        if not found:
+            return "модели пальцев/мимики не найдены (их можно скачать на вкладке «Трекинг»)"
+        import numpy as np
+        from pglmocap.extras import ExtrasTracker
+        ex = ExtrasTracker("hand" in found, "face" in found)
+        ex.close()
+        return "загружены: " + ", ".join({"hand": "пальцы", "face": "мимика"}[k] for k in found)
+
     def osc():
         from pythonosc.udp_client import SimpleUDPClient
         SimpleUDPClient("127.0.0.1", 7000).send_message("/pglmocap/selftest", 1.0)
@@ -69,6 +80,7 @@ def run(out=print):
     step("Библиотеки", libs)
     step("Модели", model)
     step("Трекинг", track)
+    step("Пальцы и мимика", extras)
     step("OSC", osc)
     step("NDI", ndi)
     step("Камеры", cams)

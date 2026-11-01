@@ -11,6 +11,8 @@ permissions:
 env:
   MODEL_URL: https://storage.googleapis.com/mediapipe-models/pose_landmarker
   TEST_PHOTO: https://storage.googleapis.com/mediapipe-assets/pose.jpg
+  HAND_MODEL_URL: https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
+  FACE_MODEL_URL: https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task
 
 jobs:
   # ------------------------------------------------------------------ Windows
@@ -35,13 +37,17 @@ jobs:
           foreach ($m in "lite","full","heavy") {
             Invoke-WebRequest "$env:MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task" -OutFile "models/pose_landmarker_$m.task"
           }
+          Invoke-WebRequest "$env:HAND_MODEL_URL" -OutFile "models/hand_landmarker.task"
+          Invoke-WebRequest "$env:FACE_MODEL_URL" -OutFile "models/face_landmarker.task"
 
       - name: Tracking test on a real photo
         shell: pwsh
         run: |
           Invoke-WebRequest $env:TEST_PHOTO -OutFile test_person.jpg
           $env:PYTHONIOENCODING = "utf-8"
-          python tools/track_image.py test_person.jpg full
+          python tools/track_image.py test_person.jpg full --hands --face
+          Invoke-WebRequest "https://storage.googleapis.com/mediapipe-assets/portrait.jpg" -OutFile portrait.jpg
+          python tools/track_image.py portrait.jpg full --face --require-face
 
       - name: Build exe
         run: >
@@ -102,6 +108,7 @@ jobs:
           $left = netsh advfirewall firewall show rule name="PGL Mocap"
           if ($left -match "Allow") { Write-Error "firewall rule not removed"; exit 1 }
           Write-Host "Installer test OK"
+          exit 0
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,14 +142,20 @@ jobs:
           for m in lite full heavy; do
             curl -fsSL -o "models/pose_landmarker_$m.task" "$MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
           done
+          curl -fsSL -o models/hand_landmarker.task "$HAND_MODEL_URL"
+          curl -fsSL -o models/face_landmarker.task "$FACE_MODEL_URL"
 
       - name: Tracking test on a real photo
         run: |
           curl -fsSL -o test_person.jpg "$TEST_PHOTO"
-          python tools/track_image.py test_person.jpg full
+          python tools/track_image.py test_person.jpg full --hands --face
+          curl -fsSL -o portrait.jpg "https://storage.googleapis.com/mediapipe-assets/portrait.jpg"
+          python tools/track_image.py portrait.jpg full --face --require-face
 
       - name: Unit tests (Live Link output)
-        run: python tests/test_livelink.py
+        run: |
+          python tests/test_livelink.py
+          python tests/test_extras_output.py
 
       - name: GUI smoke test
         run: |
