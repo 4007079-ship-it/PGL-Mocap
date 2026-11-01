@@ -5,3 +5,8 @@ build/
 dist/
 *.spec
 models/*.task
+android/app/src/main/assets/*.task
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

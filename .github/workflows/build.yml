@@ -1,4 +1,4 @@
-name: Build PGL Mocap (Windows + Linux)
+name: Build PGL Mocap (Windows + Linux + Android)
 
 on:
   push:
@@ -150,11 +150,53 @@ jobs:
           name: PGL_Mocap_linux_x64
           path: PGL_Mocap_linux_x64.tar.gz
 
+  # ------------------------------------------------------------------ Android
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Download MediaPipe models
+        run: |
+          mkdir -p android/app/src/main/assets
+          for m in lite full; do
+            curl -fsSL -o "android/app/src/main/assets/pose_landmarker_$m.task" "$MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
+          done
+
+      - name: Unit tests (same output as desktop version)
+        run: gradle -p android --no-daemon testDebugUnitTest
+
+      - name: Build APK
+        run: |
+          gradle -p android --no-daemon assembleRelease
+          cp android/app/build/outputs/apk/release/app-release.apk PGL_Mocap_android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PGL_Mocap_android
+          path: PGL_Mocap_android.apk
+
+      - name: Test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-report
+          path: android/app/build/reports
+
   # ------------------------------------------------------------------ Release
   # Готовые архивы публикуются в Releases (главная страница репозитория → справа «Releases»)
   release:
     if: github.ref == 'refs/heads/main'
-    needs: [windows, linux]
+    needs: [windows, linux, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -175,7 +217,7 @@ jobs:
         run: |
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
           tag="v${ver}-build${GITHUB_RUN_NUMBER}"
-          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows:** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
+          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows:** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Android 8+:** PGL_Mocap_android.apk — установите на телефон.\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
           # оставляем только свежий релиз: старые удаляются вместе с тегами
           for old in $(gh release list --limit 100 --json tagName -q '.[].tagName'); do
             gh release delete "$old" --cleanup-tag --yes
@@ -183,5 +225,5 @@ jobs:
           for old in $(git ls-remote --tags origin | sed -n 's|.*refs/tags/\(v[^^]*\)$|\1|p'); do
             git push origin --delete "$old" || true
           done
-          gh release create "$tag" out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGLMocapLiveLink_UE5_plugin.zip \
+          gh release create "$tag" out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGL_Mocap_android.apk out/PGLMocapLiveLink_UE5_plugin.zip \
             --title "PGL Mocap $ver (сборка $GITHUB_RUN_NUMBER)" --notes "$notes" --latest --target "$GITHUB_SHA"

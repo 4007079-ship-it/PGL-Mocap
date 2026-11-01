@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <com.pgl.mocap.OverlayView
+        android:id="@+id/overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Верхняя строка: логотип, название, статус -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#B316181D"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="@string/app_name" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textColor="@color/fg"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Остановлено"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Нижние кнопки -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <Button
+            android:id="@+id/btnSettings"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:background="@drawable/btn_dark"
+            android:text="Настройки"
+            android:textAllCaps="false"
+            android:textColor="@color/fg" />
+
+        <Button
+            android:id="@+id/btnCamera"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/btn_dark"
+            android:text="Камера"
+            android:textAllCaps="false"
+            android:textColor="@color/fg" />
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1.3"
+            android:background="@drawable/btn_accent"
+            android:text="Старт"
+            android:textAllCaps="false"
+            android:textColor="#0D1411"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Панель настроек -->
+    <ScrollView
+        android:id="@+id/settingsPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="60dp"
+        android:layout_marginBottom="76dp"
+        android:background="@color/panel"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView style="@style/Section" android:text="Куда отправлять" />
+            <TextView style="@style/Label" android:text="IP компьютера (Aximmetry / Unreal)" />
+            <EditText
+                android:id="@+id/ip"
+                style="@style/Field"
+                android:hint="192.168.1.100"
+                android:inputType="text" />
+            <TextView
+                android:id="@+id/phoneIp"
+                style="@style/Hint" />
+
+            <TextView style="@style/Section" android:text="OSC / Aximmetry" />
+            <Switch
+                android:id="@+id/oscEnabled"
+                style="@style/Toggle"
+                android:text="Отправлять OSC" />
+            <TextView style="@style/Label" android:text="Порт" />
+            <EditText
+                android:id="@+id/oscPort"
+                style="@style/Field"
+                android:inputType="number" />
+            <TextView style="@style/Label" android:text="Префикс адреса" />
+            <EditText
+                android:id="@+id/oscPrefix"
+                style="@style/Field"
+                android:inputType="text" />
+            <TextView style="@style/Label" android:text="Координаты" />
+            <RadioGroup
+                android:id="@+id/coordMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <RadioButton android:id="@+id/coordScreen" style="@style/Radio" android:text="Кадр" />
+                <RadioButton android:id="@+id/coordWorld" style="@style/Radio" android:text="Мир (метры)" />
+            </RadioGroup>
+            <TextView style="@style/Label" android:text="Ось вверх" />
+            <RadioGroup
+                android:id="@+id/upAxis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <RadioButton android:id="@+id/upY" style="@style/Radio" android:text="Y вверх" />
+                <RadioButton android:id="@+id/upZ" style="@style/Radio" android:text="Z вверх" />
+            </RadioGroup>
+
+            <TextView style="@style/Section" android:text="Unreal Live Link" />
+            <Switch
+                android:id="@+id/llEnabled"
+                style="@style/Toggle"
+                android:text="Отправлять в Unreal Live Link" />
+            <TextView style="@style/Label" android:text="Порт" />
+            <EditText
+                android:id="@+id/llPort"
+                style="@style/Field"
+                android:inputType="number" />
+            <TextView style="@style/Label" android:text="Префикс субъектов" />
+            <EditText
+                android:id="@+id/llPrefix"
+                style="@style/Field"
+                android:inputType="text" />
+
+            <TextView style="@style/Section" android:text="Трекинг" />
+            <TextView style="@style/Label" android:text="Модель" />
+            <RadioGroup
+                android:id="@+id/model"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <RadioButton android:id="@+id/modelLite" style="@style/Radio" android:text="lite (быстрая)" />
+                <RadioButton android:id="@+id/modelFull" style="@style/Radio" android:text="full (точнее)" />
+            </RadioGroup>
+            <TextView style="@style/Label" android:text="Людей в кадре (макс.)" />
+            <RadioGroup
+                android:id="@+id/numPoses"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <RadioButton android:id="@+id/np1" style="@style/Radio" android:text="1" />
+                <RadioButton android:id="@+id/np2" style="@style/Radio" android:text="2" />
+                <RadioButton android:id="@+id/np3" style="@style/Radio" android:text="3" />
+                <RadioButton android:id="@+id/np4" style="@style/Radio" android:text="4" />
+            </RadioGroup>
+            <TextView
+                android:id="@+id/smoothingLabel"
+                style="@style/Label"
+                android:text="Сглаживание" />
+            <SeekBar
+                android:id="@+id/smoothing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="100" />
+            <Switch
+                android:id="@+id/useGpu"
+                style="@style/Toggle"
+                android:text="Использовать GPU" />
+
+            <Button
+                android:id="@+id/btnApply"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/btn_accent"
+                android:text="Применить"
+                android:textAllCaps="false"
+                android:textColor="#0D1411"
+                android:textStyle="bold" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_marginTop="12dp"
+                android:text="Телефон и компьютер должны быть в одной сети Wi‑Fi. Адреса OSC и субъекты Live Link — такие же, как у PGL Mocap на компьютере." />
+            <TextView
+                android:id="@+id/version"
+                style="@style/Hint" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
