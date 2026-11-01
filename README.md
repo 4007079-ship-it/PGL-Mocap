@@ -30,6 +30,7 @@
 | **Windows** 10 / 11 — без установки (portable) | [PGL_Mocap_win64.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_win64.zip) | распаковал и запустил, права администратора не нужны |
 | **Linux** x64 — Ubuntu 22.04+, Debian 12+, Mint 21+ | [PGL_Mocap_linux_x64.tar.gz](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_linux_x64.tar.gz) | программа |
 | **macOS** 13+ — Apple Silicon (M1 и новее) | [PGL_Mocap_macOS.dmg](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_macOS.dmg) | программа |
+| **macOS** 13+ — Intel | [PGL_Mocap_macOS_Intel.dmg](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_macOS_Intel.dmg) | программа |
 | **Android** 8+ (64-битный телефон) | [PGL_Mocap_android.apk](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_android.apk) | телефон сам распознаёт позу и отправляет в Aximmetry / Unreal |
 | **Плагин для Unreal Engine** 5.6+ | [PGLMocapLiveLink_UE5_plugin.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGLMocapLiveLink_UE5_plugin.zip) | приём данных в Unreal |
 
@@ -65,7 +66,8 @@ cd "PGL Mocap"
 3. Разрешите доступ к **камере** и **локальной сети**, когда macOS спросит, — без них не будет видео,
    NDI и отправки данных.
 
-Mac на процессорах Intel не поддерживаются: для них нет актуальной версии MediaPipe.
+Какой файл качать: ** → Об этом Mac**. «Чип Apple M…» — `PGL_Mocap_macOS.dmg`, «Процессор Intel…» — `PGL_Mocap_macOS_Intel.dmg`.
+На Intel программа работает медленнее (старые процессоры); если скорость низкая — модель *lite* и ширина анализа 480.
 
 **Android**
 1. Скачайте `PGL_Mocap_android.apk` на телефон и откройте файл.
