@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var sender: Sender? = null
     @Volatile private var running = false
     @Volatile private var rebuildDetector = true
+    @Volatile private var detectorFailed: String? = null
 
     // Статистика для строки статуса
     @Volatile private var fps = 0.0
@@ -163,18 +164,32 @@ class MainActivity : AppCompatActivity() {
         try {
             if (!running) return
             val s = settings
-            if (rebuildDetector || detector == null) {
+            if (rebuildDetector || (detector == null && detectorFailed == null)) {
                 detector?.close()
-                detector = PoseDetector(this, s.model, s.numPoses, s.minConfidence, s.useGpu)
-                gpuInUse = detector!!.usingGpu
-                slots = PoseSlots(s.numPoses)
+                detector = null
                 rebuildDetector = false
+                try {
+                    detector = PoseDetector(this, s.model, s.numPoses, s.minConfidence, s.useGpu)
+                    gpuInUse = detector!!.usingGpu
+                    detectorFailed = null
+                } catch (e: UnsatisfiedLinkError) {
+                    detectorFailed = "Распознавание не поддерживается на этом устройстве (нужен 64-битный ARM-процессор)"
+                } catch (e: Throwable) {
+                    detectorFailed = "Не удалось загрузить модель: ${e.message ?: e.javaClass.simpleName}"
+                }
+                slots = PoseSlots(s.numPoses)
+            }
+            val det = detector
+            if (det == null) {
+                errorText = detectorFailed
+                overlay.update(upright(proxy.toBitmap(), proxy.imageInfo.rotationDegrees), emptyList(), mirror = s.frontCamera)
+                return
             }
             if (sender == null) sender = Sender()
 
             val bitmap = upright(proxy.toBitmap(), proxy.imageInfo.rotationDegrees)
             val aspect = bitmap.width.toDouble() / bitmap.height
-            val poses = detector!!.detect(bitmap)
+            val poses = det.detect(bitmap)
             val now = SystemClock.elapsedRealtime() / 1000.0
             val out = slots!!.assign(poses, now, s)
             sender!!.send(out, aspect, s)
@@ -195,7 +210,7 @@ class MainActivity : AppCompatActivity() {
                 frames = 0
                 tStat = t
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             errorText = "Ошибка: ${e.message ?: e.javaClass.simpleName}"
         } finally {
             proxy.close()

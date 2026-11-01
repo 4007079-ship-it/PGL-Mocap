@@ -20,5 +20,9 @@ wait $LISTENER; UDP=$?
 cat udp.log
 echo "--- crashes:"
 grep -E "FATAL EXCEPTION|AndroidRuntime|PGLMocap" logcat.txt | head -40
-grep -q "FATAL EXCEPTION" logcat.txt && exit 1
-exit $UDP
+grep -q "FATAL EXCEPTION" logcat.txt && { echo "CRASH"; exit 1; }
+adb shell pidof com.pgl.mocap >/dev/null || { echo "APP DIED"; exit 1; }
+# На x86-эмуляторе MediaPipe (только ARM64) не работает — это ожидаемо; отправку данных проверяем, если библиотека есть
+if adb shell getprop ro.product.cpu.abilist | grep -q arm64; then exit $UDP; fi
+echo "x86 emulator: no MediaPipe, app alive without crash - OK"
+exit 0
