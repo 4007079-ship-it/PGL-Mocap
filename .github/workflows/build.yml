@@ -176,5 +176,12 @@ jobs:
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
           tag="v${ver}-build${GITHUB_RUN_NUMBER}"
           notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows:** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
+          # оставляем только свежий релиз: старые удаляются вместе с тегами
+          for old in $(gh release list --limit 100 --json tagName -q '.[].tagName'); do
+            gh release delete "$old" --cleanup-tag --yes
+          done
+          for old in $(git ls-remote --tags origin | sed -n 's|.*refs/tags/\(v[^^]*\)$|\1|p'); do
+            git push origin --delete "$old" || true
+          done
           gh release create "$tag" out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGLMocapLiveLink_UE5_plugin.zip \
             --title "PGL Mocap $ver (сборка $GITHUB_RUN_NUMBER)" --notes "$notes" --latest --target "$GITHUB_SHA"
