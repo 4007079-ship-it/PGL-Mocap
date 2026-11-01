@@ -29,6 +29,7 @@
 | **Windows** 10 / 11 — установщик (рекомендуется) | [PGL_Mocap_Setup.exe](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_Setup.exe) | программа с ярлыками и настройкой брандмауэра |
 | **Windows** 10 / 11 — без установки (portable) | [PGL_Mocap_win64.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_win64.zip) | распаковал и запустил, права администратора не нужны |
 | **Linux** x64 — Ubuntu 22.04+, Debian 12+, Mint 21+ | [PGL_Mocap_linux_x64.tar.gz](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_linux_x64.tar.gz) | программа |
+| **macOS** 13+ — Apple Silicon (M1 и новее) | [PGL_Mocap_macOS.dmg](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_macOS.dmg) | программа |
 | **Android** 8+ (64-битный телефон) | [PGL_Mocap_android.apk](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_android.apk) | телефон сам распознаёт позу и отправляет в Aximmetry / Unreal |
 | **Плагин для Unreal Engine** 5.6+ | [PGLMocapLiveLink_UE5_plugin.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGLMocapLiveLink_UE5_plugin.zip) | приём данных в Unreal |
 
@@ -55,6 +56,16 @@ cd "PGL Mocap"
 ./"PGL Mocap"
 ```
 Чтобы программа появилась в меню приложений — запустите в той же папке `./install_linux.sh`.
+
+**macOS**
+1. Откройте `PGL_Mocap_macOS.dmg` и перетащите **PGL Mocap** в папку **Программы**.
+2. Первый запуск: macOS напишет, что не может проверить разработчика (приложение не заверено Apple).
+   Нажмите **Готово**, откройте **Системные настройки → Конфиденциальность и безопасность**,
+   внизу у сообщения о PGL Mocap нажмите **Всё равно открыть** и подтвердите. Это нужно один раз.
+3. Разрешите доступ к **камере** и **локальной сети**, когда macOS спросит, — без них не будет видео,
+   NDI и отправки данных.
+
+Mac на процессорах Intel не поддерживаются: для них нет актуальной версии MediaPipe.
 
 **Android**
 1. Скачайте `PGL_Mocap_android.apk` на телефон и откройте файл.
@@ -223,11 +234,12 @@ pinky_mcp, pinky_pip, pinky_dip, pinky_tip` (`_tip` — кончики паль�
 - **Unreal: *Waiting* / *No data*** — в PGL Mocap включена отправка в Live Link и нажат Старт, IP и порт совпадают.
 - **Android: «Распознавание не поддерживается на этом устройстве»** — нужен телефон с 64-битным ARM-процессором (большинство телефонов с 2017 года).
 - **Android: нет данных на компьютере** — проверьте IP в настройках, что телефон в той же сети Wi-Fi (не гостевой), и что брандмауэр компьютера пропускает UDP.
+- **macOS: нет картинки с камеры или данные не уходят** — **Системные настройки → Конфиденциальность и безопасность → Камера / Локальная сеть** → включите PGL Mocap.
 - **Linux: нет камеры в списке** — `sudo usermod -aG video $USER` и перезайдите в систему.
 - **Проверка программы** — запустите `PGL Mocap.exe --selftest`: появится файл
   `pgl_mocap_selftest.txt` с результатами (рядом с программой, а если она установлена в Program Files —
   в `%APPDATA%\PGL Mocap`). Журнал ошибок: `%APPDATA%\PGL Mocap\pgl_mocap.log`
-  (Linux: `~/.config/PGL Mocap/pgl_mocap.log`). Пришлите эти файлы, если нужна помощь.
+  (Linux: `~/.config/PGL Mocap/pgl_mocap.log`, macOS: `~/Library/Application Support/PGL Mocap/pgl_mocap.log`). Пришлите эти файлы, если нужна помощь.
 
 ---
 
