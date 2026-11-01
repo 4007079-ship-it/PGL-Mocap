@@ -1,4 +1,4 @@
-name: Build PGL Mocap (Windows + Linux + Android)
+name: Build PGL Mocap (Windows + Linux + macOS + Android)
 
 on:
   push:
@@ -294,11 +294,70 @@ jobs:
             logcat.txt
             udp.log
 
+  # ------------------------------------------------------------------ macOS (Apple Silicon)
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller==6.22.3
+
+      - name: Download MediaPipe models
+        run: |
+          mkdir -p models
+          for m in lite full heavy; do
+            curl -fsSL -o "models/pose_landmarker_$m.task" "$MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
+          done
+          curl -fsSL -o models/hand_landmarker.task "$HAND_MODEL_URL"
+          curl -fsSL -o models/face_landmarker.task "$FACE_MODEL_URL"
+
+      - name: Tracking test on real photos
+        run: |
+          curl -fsSL -o test_person.jpg "$TEST_PHOTO"
+          python tools/track_image.py test_person.jpg full --hands --face
+          curl -fsSL -o portrait.jpg "https://storage.googleapis.com/mediapipe-assets/portrait.jpg"
+          python tools/track_image.py portrait.jpg full --face --require-face
+
+      - name: Unit tests
+        run: |
+          python tests/test_livelink.py
+          python tests/test_extras_output.py
+
+      - name: Build app and DMG
+        run: bash installer/macos/build_mac.sh
+
+      - name: Self-test of the built app
+        run: |
+          "dist/PGL Mocap.app/Contents/MacOS/PGL Mocap" --selftest; rc=$?
+          f="dist/PGL Mocap.app/Contents/MacOS/pgl_mocap_selftest.txt"
+          [ -f "$f" ] || f="$HOME/Library/Application Support/PGL Mocap/pgl_mocap_selftest.txt"
+          cat "$f"
+          exit $rc
+
+      - name: GUI starts (window opens, no crash in 8 s)
+        run: |
+          "dist/PGL Mocap.app/Contents/MacOS/PGL Mocap" &
+          PID=$!
+          sleep 8
+          if kill -0 $PID 2>/dev/null; then echo "GUI running"; kill $PID; else echo "GUI exited"; cat "$HOME/Library/Application Support/PGL Mocap/pgl_mocap.log" || true; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PGL_Mocap_macOS
+          path: PGL_Mocap_macOS.dmg
+
   # ------------------------------------------------------------------ Release
   # Готовые архивы публикуются в Releases (главная страница репозитория → справа «Releases»)
   release:
     if: github.ref == 'refs/heads/main'
-    needs: [windows, linux, android]
+    needs: [windows, linux, macos, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -319,7 +378,7 @@ jobs:
         run: |
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
           tag="v${ver}-build${GITHUB_RUN_NUMBER}"
-          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows (установщик, рекомендуется):** PGL_Mocap_Setup.exe — ярлыки, брандмауэр, удаление через «Приложения».\n- **Windows (portable):** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Android 8+:** PGL_Mocap_android.apk — установите на телефон.\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
+          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows (установщик, рекомендуется):** PGL_Mocap_Setup.exe — ярлыки, брандмауэр, удаление через «Приложения».\n- **Windows (portable):** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **macOS 13+ (Apple Silicon M1 и новее):** PGL_Mocap_macOS.dmg — перетащите PGL Mocap в «Программы».\n- **Android 8+:** PGL_Mocap_android.apk — установите на телефон.\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
           # оставляем только свежий релиз: старые удаляются вместе с тегами
           for old in $(gh release list --limit 100 --json tagName -q '.[].tagName'); do
             gh release delete "$old" --cleanup-tag --yes
@@ -327,5 +386,5 @@ jobs:
           for old in $(git ls-remote --tags origin | sed -n 's|.*refs/tags/\(v[^^]*\)$|\1|p'); do
             git push origin --delete "$old" || true
           done
-          gh release create "$tag" out/PGL_Mocap_Setup.exe out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGL_Mocap_android.apk out/PGLMocapLiveLink_UE5_plugin.zip \
+          gh release create "$tag" out/PGL_Mocap_Setup.exe out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGL_Mocap_macOS.dmg out/PGL_Mocap_android.apk out/PGLMocapLiveLink_UE5_plugin.zip \
             --title "PGL Mocap $ver (сборка $GITHUB_RUN_NUMBER)" --notes "$notes" --latest --target "$GITHUB_SHA"

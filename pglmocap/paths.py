@@ -68,7 +68,10 @@ def available_models():
 
 
 def settings_dir() -> Path:
-    base = os.environ.get("APPDATA") or str(Path.home() / ".config")
+    if sys.platform == "darwin":
+        base = str(Path.home() / "Library" / "Application Support")
+    else:
+        base = os.environ.get("APPDATA") or str(Path.home() / ".config")
     d = Path(base) / APP_NAME
     d.mkdir(parents=True, exist_ok=True)
     return d
