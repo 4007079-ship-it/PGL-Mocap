@@ -20,6 +20,8 @@ android {
         targetSdk = 35
         versionCode = buildNumber
         versionName = "$appVersion-build$buildNumber"
+        // MediaPipe для Android поставляется только под 64-битный ARM
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     signingConfigs {
