@@ -13,7 +13,7 @@ from .sources import make_source
 from .tracker import IDX, MIRROR_PERM, SKELETON, Pose, PoseTracker
 
 ROT = {90: cv2.ROTATE_90_CLOCKWISE, 180: cv2.ROTATE_180, 270: cv2.ROTATE_90_COUNTERCLOCKWISE}
-SLOT_COLORS = [(80, 220, 80), (255, 170, 40), (60, 140, 255), (220, 80, 220)]
+SLOT_COLORS = [(53, 230, 163), (255, 170, 40), (60, 140, 255), (220, 80, 220)]
 
 
 class _Slot:
