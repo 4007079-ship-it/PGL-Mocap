@@ -39,6 +39,13 @@ DEFAULTS = {
     "send_visibility": False,
     "send_all_vector": False,
     "osc_enabled": True,
+    # Unreal Live Link (через плагин PGLMocapLiveLink)
+    "ll_enabled": False,
+    "ll_ip": "127.0.0.1",
+    "ll_port": 54321,
+    "ll_prefix": "PGL",
+    "ll_points": "all",             # all | core
+    "ll_root_motion": 200.0,        # см на высоту кадра; 0 — человек всегда в центре
 }
 
 

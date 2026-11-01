@@ -1,0 +1,30 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "PGL Mocap Live Link",
+	"Description": "Live Link source for PGL Mocap: receives body tracking (points and skeleton) over UDP.",
+	"Category": "Animation",
+	"CreatedBy": "PGL",
+	"CreatedByURL": "https://github.com/4007079-ship-it/PGL-Mocap",
+	"DocsURL": "https://github.com/4007079-ship-it/PGL-Mocap#unreal-live-link",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "PGLMocapLiveLink",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [ "Win64", "Linux", "Mac" ]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "LiveLink",
+			"Enabled": true
+		}
+	]
+}

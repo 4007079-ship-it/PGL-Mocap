@@ -1,4 +1,4 @@
-"""Рабочий цикл: источник -> трекинг -> сглаживание -> OSC + кадр превью."""
+"""Рабочий цикл: источник -> трекинг -> сглаживание -> OSC / Live Link + кадр превью."""
 import threading
 import time
 import traceback
@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from .filters import OneEuro, params_from_strength
+from .livelink_output import LiveLinkOutput
 from .osc_output import OscOutput
 from .sources import make_source
 from .tracker import IDX, MIRROR_PERM, SKELETON, Pose, PoseTracker
@@ -42,6 +43,8 @@ class Engine:
         self.fps = 0.0
         self.persons = 0
         self.msg_rate = 0.0
+        self.ll_rate = 0.0
+        self.out_error = None
         self.source_info = ""
 
     @property
@@ -79,6 +82,8 @@ class Engine:
             src = make_source(s)
             src.start()
             osc = OscOutput()
+            livelink = LiveLinkOutput()
+            ll_before = 0
             slots = [_Slot() for _ in range(max_slots)]
             seq = 0
             t_fps = time.perf_counter()
@@ -110,7 +115,14 @@ class Engine:
                              for p in poses]
                 now = time.perf_counter()
                 out = self._assign(slots, poses, now, s)
-                osc.send_frame(out, aspect, s, max_slots)
+                try:
+                    osc.send_frame(out, aspect, s, max_slots)
+                except OSError as e:
+                    self.out_error = f"OSC: {e}"
+                try:
+                    livelink.send_frame(out, aspect, s)
+                except OSError as e:
+                    self.out_error = f"Live Link: {e}"
 
                 self._make_preview(frame, out)
                 frames += 1
@@ -119,6 +131,8 @@ class Engine:
                     self.fps = frames / dt
                     self.msg_rate = (osc.sent - sent_before) / dt
                     sent_before = osc.sent
+                    self.ll_rate = (livelink.sent - ll_before) / dt
+                    ll_before = livelink.sent
                     frames = 0
                     t_fps = now
                     self.persons = sum(1 for p in out if p is not None)

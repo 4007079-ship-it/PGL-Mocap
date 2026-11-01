@@ -5,6 +5,7 @@
 - Входы: **вебка**, **карта захвата** (Elgato, Magewell, AVerMedia, Blackmagic и др.), **NDI**, видеофайл.
 - Трекинг: Google MediaPipe Pose — 33 точки тела, до 4 человек одновременно.
 - Выход: OSC (UDP) → модули OSC Vector / OSC Scalar в Aximmetry.
+- Выход: **Unreal Engine Live Link** (плагин в комплекте) — точки как Transform и скелет 17 костей.
 - Сглаживание (One Euro), удержание позы при кратковременной потере, зеркалирование, поворот кадра.
 
 Собрано из открытых библиотек: [MediaPipe](https://github.com/google-ai-edge/mediapipe) (Apache 2.0),
@@ -109,7 +110,68 @@ left_foot_index, right_foot_index`
 
 ---
 
-## 4. Если что-то не работает
+## 4. Unreal Engine Live Link
+
+PGL Mocap отдаёт данные в Unreal Engine 5.6+ через собственный плагин **PGL Mocap Live Link**
+(в Releases — `PGLMocapLiveLink_UE5_plugin.zip`). Aximmetry и Unreal можно кормить одновременно.
+
+### Установка плагина
+
+Плагин поставляется исходниками и один раз собирается под вашу версию движка.
+Нужен **Visual Studio 2022** с компонентом *Game development with C++* (как для любого C++ в Unreal).
+
+1. Распакуйте `PGLMocapLiveLink_UE5_plugin.zip`.
+2. Запустите `build_plugin.bat` (если Unreal стоит не в `C:\Program Files\Epic Games\UE_5.x`,
+   передайте путь: `build_plugin.bat "D:\Epic Games\UE_5.6"`). Сборка — несколько минут.
+3. Скопируйте получившуюся папку `Build\PGLMocapLiveLink` в папку `Plugins` вашего проекта
+   (рядом с `.uproject`; создайте `Plugins`, если её нет). Подходит и для проектов только на Blueprint.
+4. Откройте проект → **Edit → Plugins** → убедитесь, что включены **PGL Mocap Live Link** и **Live Link**.
+
+Если проект C++, можно просто положить папку `PGLMocapLiveLink` (исходники) в `Plugins` — Unreal соберёт её сам при открытии.
+
+### Подключение
+
+1. В PGL Mocap: вкладка **Unreal Live Link** → включите *Отправлять в Unreal Live Link*,
+   IP компьютера с Unreal (тот же компьютер — `127.0.0.1`), порт `54321`.
+2. В Unreal: **Window → Virtual Production → Live Link** → **+ Source → PGL Mocap** → порт `54321` → **Add**.
+3. Нажмите **Старт** в PGL Mocap — в окне Live Link появятся субъекты (у источника статус *Receiving*).
+
+### Субъекты
+
+`P1`…`P4` — номер человека, префикс `PGL` меняется в настройках.
+
+| Субъект | Роль | Что это |
+|---|---|---|
+| `PGL_P1_hip_center` | Transform | центр человека (между бёдрами) |
+| `PGL_P1_shoulder_center` | Transform | центр между плечами |
+| `PGL_P1_<точка>` | Transform | любая из 33 точек: `PGL_P1_right_wrist`, `PGL_P1_nose`, … |
+| `PGL_P1` | Animation | скелет из 17 костей с поворотами |
+
+Когда человек уходит из кадра, его субъекты удаляются и появляются снова, когда он вернётся.
+
+**Координаты** — сразу в системе Unreal: сантиметры, **X вперёд** (куда смотрит человек, т.е. к камере),
+**Y вправо** (его правая рука), **Z вверх**, пол — `Z = 0`. Перемещение человека по кадру
+двигает его по оси Y (настройка *Перемещение, см*; 0 — человек всегда в начале координат).
+Глубина (приближение/удаление от камеры) одной камерой не измеряется.
+
+### Привязать объект к точке
+
+1. Выберите актор (куб, камеру, источник света, Niagara-эффект) → **Add Component → Live Link Controller**.
+2. В компоненте: **Subject Representation** → субъект, например `PGL_P1_right_wrist`, роль *Transform*.
+3. Актор начнёт двигаться за рукой. Чтобы сместить начало координат — положите актор внутрь
+   пустого актора-родителя и двигайте родителя.
+
+### Скелет `PGL_P1`
+
+Кости (родитель в скобках): `root`, `pelvis (root)`, `spine_01 (pelvis)`, `neck_01 (spine_01)`, `head (neck_01)`,
+`upperarm_l/r (spine_01)`, `lowerarm_l/r`, `hand_l/r`, `thigh_l/r (pelvis)`, `calf_l/r`, `foot_l/r`.
+Трансформы локальные (относительно родителя), ось X каждой кости направлена вдоль кости,
+ось Z — ось сгиба. `root` несёт перемещение по площадке, `pelvis` — высоту бёдер над полом.
+
+Скелет можно смотреть и использовать в Blueprint/Control Rig уже сейчас. Анимация готового
+персонажа (Manny, MetaHuman) через ретаргет — следующий этап, его настроим отдельно.
+
+## 5. Если что-то не работает
 
 - **Самопроверка**: запустите `PGL Mocap.exe --selftest` (например, из командной строки) —
   рядом с exe появится `pgl_mocap_selftest.txt` с результатами по библиотекам, модели, NDI и камерам.
@@ -117,13 +179,15 @@ left_foot_index, right_foot_index`
   что OSC Server включён в Manage Devices. Проверить отправку без Aximmetry можно монитором:
   `python tools\osc_monitor.py 7000` (Aximmetry при этом закройте — порт может слушать только одна программа).
 - **Linux, нет камеры в списке**: `sudo usermod -aG video $USER` и перелогиньтесь. Для NDI нужен запущенный `avahi-daemon`.
+- **Unreal: источник PGL Mocap показывает *Port … is busy***: порт занят другой программой — смените порт в обоих местах.
+- **Unreal: статус *Waiting* / *No data***: проверьте, что в PGL Mocap включена отправка в Live Link и нажат Старт, IP/порт совпадают, брандмауэр пропускает UDP.
 - **Камера / карта занята**: закройте OBS, Zoom, браузер и т.п., или смените бэкенд.
 - **NDI не видит источники**: компьютеры в одной сети, брандмауэр пропускает NDI; в крайнем случае
   поставьте NDI Tools и используйте *NDI Webcam Input* — тогда NDI будет виден как обычная камера.
 - **Низкий FPS**: модель *lite*, ширина анализа 480 или 320, один человек.
 - **Нет моделей** (при запуске из исходников): вкладка «Трекинг» → **Скачать**.
 
-## 5. Структура проекта
+## 6. Структура проекта
 
 ```
 run_pgl_mocap.py     точка входа
@@ -133,5 +197,7 @@ models/              модели MediaPipe (скачиваются build.bat)
 tools/osc_monitor.py проверка приёма OSC
 build.bat            сборка exe
 tools/install_linux.sh  ярлык в меню Linux
+unreal/              плагин Live Link для Unreal Engine 5.6+ и build_plugin.bat
+tests/               проверки вывода Live Link
 .github/workflows/   сборка Windows + Linux и публикация в Releases
 ```

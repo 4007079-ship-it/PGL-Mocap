@@ -31,6 +31,7 @@ COORD_MODES = [("screen", "Кадр (позиция в кадре, высота 
                ("world", "Мир (метры, скелет относительно бёдер)")]
 UP_AXES = [("y", "Y вверх"), ("z", "Z вверх")]
 JOINT_SETS = [("all", "Все 33 точки"), ("core", "Основные 13 точек")]
+LL_POINT_SETS = [("all", "Все 33 точки + центры"), ("core", "Основные 13 точек + центры")]
 BACKENDS = [("dshow", "DirectShow"), ("msmf", "Media Foundation"), ("any", "Авто")]
 
 
@@ -131,6 +132,7 @@ class App:
         nb.add(self._tab_source(nb), text="Источник")
         nb.add(self._tab_tracking(nb), text="Трекинг")
         nb.add(self._tab_osc(nb), text="OSC / Aximmetry")
+        nb.add(self._tab_unreal(nb), text="Unreal Live Link")
 
         self.hint_lbl = ttk.Label(right, text="", style="Status.TLabel", wraplength=380)
         self.hint_lbl.pack(fill="x", pady=(8, 0))
@@ -333,6 +335,33 @@ class App:
             row=r, column=0, columnspan=2, sticky="w")
         return f
 
+    # --- вкладка «Unreal Live Link»
+    def _tab_unreal(self, nb):
+        f = self._frame(nb)
+        r = 0
+        ttk.Checkbutton(f, text="Отправлять в Unreal Live Link", variable=self._var("ll_enabled", "bool")).grid(
+            row=r, column=0, columnspan=2, sticky="w", pady=4); r += 1
+        self._grid_row(f, r, "IP компьютера с Unreal", ttk.Entry(f, textvariable=self._var("ll_ip"))); r += 1
+        self._grid_row(f, r, "Порт", ttk.Entry(f, textvariable=self._var("ll_port", "int"), width=8)); r += 1
+        self._grid_row(f, r, "Префикс субъектов", ttk.Entry(f, textvariable=self._var("ll_prefix"))); r += 1
+        self._grid_row(f, r, "Точки", self._choice(f, "ll_points", LL_POINT_SETS)); r += 1
+        self._grid_row(f, r, "Перемещение, см", ttk.Entry(f, textvariable=self._var("ll_root_motion", "float"),
+                                                          width=8),
+                       "На сколько сантиметров сдвигается человек в Unreal, если в кадре он прошёл "
+                       "расстояние, равное высоте кадра. 0 — всегда в центре."); r += 2
+        ttk.Separator(f).grid(row=r, column=0, columnspan=2, sticky="ew", pady=10); r += 1
+        help_txt = ("В Unreal 5.6: включите плагин PGL Mocap Live Link,\n"
+                    "Window → Virtual Production → Live Link →\n"
+                    "+ Source → PGL Mocap → порт как здесь → Add.\n\n"
+                    "Появятся субъекты:\n"
+                    "  PGL_P1            — скелет (Animation)\n"
+                    "  PGL_P1_right_wrist — точка (Transform)\n"
+                    "  PGL_P1_hip_center  — центр человека\n"
+                    "Координаты: см, X вперёд, Y вправо, Z вверх, пол = 0.")
+        ttk.Label(f, text=help_txt, style="Muted.TLabel", justify="left").grid(
+            row=r, column=0, columnspan=2, sticky="w")
+        return f
+
     # ------------------------------------------------------------------ действия
     def _on_source_type(self):
         t = self.s["source_type"]
@@ -452,6 +481,8 @@ class App:
                               style="Stop.TButton" if running else "Start.TButton")
         if running:
             st = f"{e.status}  ·  {e.fps:4.1f} к/с  ·  людей: {e.persons}  ·  OSC: {e.msg_rate:.0f} сообщ./с"
+            if self.s.get("ll_enabled"):
+                st += f"  ·  Live Link: {e.ll_rate:.0f} к/с"
         else:
             st = e.status
         self.status_lbl.config(text=st, foreground=DANGER if e.error else MUTED)
@@ -461,6 +492,8 @@ class App:
         elif self._dirty_restart:
             self.hint_lbl.config(text="Изменения источника/модели вступят в силу после Стоп → Старт.",
                                  foreground=MUTED)
+        elif running and e.out_error:
+            self.hint_lbl.config(text=f"Ошибка отправки — {e.out_error}", foreground=DANGER)
         elif running:
             self.hint_lbl.config(text="", foreground=MUTED)
 
