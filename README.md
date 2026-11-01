@@ -19,6 +19,7 @@
 - Сглаживание дрожания, удержание позы при кратковременной потере, зеркало, поворот кадра,
   подстройка масштаба и осей под вашу сцену.
 - Работает на обычном процессоре, видеокарта не обязательна. Настройки запоминаются.
+- **Приложение для Android:** телефон сам распознаёт позу и отправляет данные — без компьютера с PGL Mocap.
 
 ## Скачать
 
@@ -26,6 +27,7 @@
 |---|---|---|
 | **Windows** 10 / 11 (64-bit) | [PGL_Mocap_win64.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_win64.zip) | программа |
 | **Linux** x64 — Ubuntu 22.04+, Debian 12+, Mint 21+ | [PGL_Mocap_linux_x64.tar.gz](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_linux_x64.tar.gz) | программа |
+| **Android** 8+ (64-битный телефон) | [PGL_Mocap_android.apk](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_android.apk) | телефон сам распознаёт позу и отправляет в Aximmetry / Unreal |
 | **Плагин для Unreal Engine** 5.6+ | [PGLMocapLiveLink_UE5_plugin.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGLMocapLiveLink_UE5_plugin.zip) | приём данных в Unreal |
 
 Ссылки всегда ведут на последнюю версию. Все версии — в разделе [Releases](https://github.com/4007079-ship-it/PGL-Mocap/releases).
@@ -44,6 +46,15 @@ cd "PGL Mocap"
 ./"PGL Mocap"
 ```
 Чтобы программа появилась в меню приложений — запустите в той же папке `./install_linux.sh`.
+
+**Android**
+1. Скачайте `PGL_Mocap_android.apk` на телефон и откройте файл.
+2. Если телефон спросит — разрешите установку из этого источника (приложение не из Google Play).
+3. Запустите **PGL Mocap**, разрешите доступ к камере.
+4. **Настройки** → IP компьютера с Aximmetry или Unreal → **Применить**. Телефон и компьютер — в одной сети Wi-Fi.
+
+Адреса OSC и субъекты Live Link у телефона такие же, как у программы на компьютере, —
+в Aximmetry и Unreal ничего менять не нужно. Кнопка **Камера** переключает основную и фронтальную камеру.
 
 ## Как пользоваться
 
@@ -174,6 +185,8 @@ left_foot_index, right_foot_index`
 - **Низкая скорость** — модель *lite*, ширина анализа 480 или 320, один человек.
 - **Unreal: *Port … is busy*** — порт занят другой программой, смените его в обоих местах.
 - **Unreal: *Waiting* / *No data*** — в PGL Mocap включена отправка в Live Link и нажат Старт, IP и порт совпадают.
+- **Android: «Распознавание не поддерживается на этом устройстве»** — нужен телефон с 64-битным ARM-процессором (большинство телефонов с 2017 года).
+- **Android: нет данных на компьютере** — проверьте IP в настройках, что телефон в той же сети Wi-Fi (не гостевой), и что брандмауэр компьютера пропускает UDP.
 - **Linux: нет камеры в списке** — `sudo usermod -aG video $USER` и перезайдите в систему.
 - **Проверка программы** — запустите `PGL Mocap.exe --selftest`: рядом появится файл
   `pgl_mocap_selftest.txt` с результатами. Журнал ошибок: `%APPDATA%\PGL Mocap\pgl_mocap.log`
