@@ -70,10 +70,45 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "dist/PGL Mocap" -DestinationPath "PGL_Mocap_win64.zip"
 
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          $ver = (Select-String -Path pglmocap/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
+          & $iscc /Qp "/DAppVer=$ver" "/DBuildNum=$env:GITHUB_RUN_NUMBER" installer\pgl_mocap.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Copy-Item dist\PGL_Mocap_Setup.exe PGL_Mocap_Setup.exe
+          Get-Item PGL_Mocap_Setup.exe | Format-List Name, Length
+
+      - name: Test installer (silent install, self-test, firewall, uninstall)
+        shell: pwsh
+        run: |
+          $p = Start-Process PGL_Mocap_Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/TASKS=desktopicon,firewall","/LOG=install.log" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content install.log -Tail 30; exit 1 }
+          $app = "$env:ProgramFiles\PGL Mocap"
+          if (-not (Test-Path "$app\PGL Mocap.exe")) { Write-Error "exe not installed"; exit 1 }
+          if (-not (Test-Path "$env:PUBLIC\Desktop\PGL Mocap.lnk")) { Write-Error "desktop shortcut missing"; exit 1 }
+          $rules = netsh advfirewall firewall show rule name="PGL Mocap"
+          $rules | Select-String "Direction|Action|Program"
+          if (-not ($rules -match "Allow")) { Write-Error "firewall rule missing"; exit 1 }
+          $t = Start-Process "$app\PGL Mocap.exe" -ArgumentList "--selftest" -Wait -PassThru
+          Get-Content "$app\pgl_mocap_selftest.txt"
+          if ($t.ExitCode -ne 0) { Write-Error "installed self-test failed"; exit 1 }
+          Remove-Item "$app\pgl_mocap_selftest.txt"
+          $u = Start-Process "$app\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+          Start-Sleep 5
+          if (Test-Path "$app\PGL Mocap.exe") { Write-Error "uninstall left files"; exit 1 }
+          $left = netsh advfirewall firewall show rule name="PGL Mocap"
+          if ($left -match "Allow") { Write-Error "firewall rule not removed"; exit 1 }
+          Write-Host "Installer test OK"
+
       - uses: actions/upload-artifact@v4
         with:
           name: PGL_Mocap_win64
-          path: PGL_Mocap_win64.zip
+          path: |
+            PGL_Mocap_win64.zip
+            PGL_Mocap_Setup.exe
 
   # ------------------------------------------------------------------ Linux
   linux:
@@ -271,7 +306,7 @@ jobs:
         run: |
           ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
           tag="v${ver}-build${GITHUB_RUN_NUMBER}"
-          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows:** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Android 8+:** PGL_Mocap_android.apk — установите на телефон.\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
+          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows (установщик, рекомендуется):** PGL_Mocap_Setup.exe — ярлыки, брандмауэр, удаление через «Приложения».\n- **Windows (portable):** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n- **Android 8+:** PGL_Mocap_android.apk — установите на телефон.\n- **Unreal Engine 5.6+:** PGLMocapLiveLink_UE5_plugin.zip — плагин Live Link (исходники + build_plugin.bat).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
           # оставляем только свежий релиз: старые удаляются вместе с тегами
           for old in $(gh release list --limit 100 --json tagName -q '.[].tagName'); do
             gh release delete "$old" --cleanup-tag --yes
@@ -279,5 +314,5 @@ jobs:
           for old in $(git ls-remote --tags origin | sed -n 's|.*refs/tags/\(v[^^]*\)$|\1|p'); do
             git push origin --delete "$old" || true
           done
-          gh release create "$tag" out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGL_Mocap_android.apk out/PGLMocapLiveLink_UE5_plugin.zip \
+          gh release create "$tag" out/PGL_Mocap_Setup.exe out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz out/PGL_Mocap_android.apk out/PGLMocapLiveLink_UE5_plugin.zip \
             --title "PGL Mocap $ver (сборка $GITHUB_RUN_NUMBER)" --notes "$notes" --latest --target "$GITHUB_SHA"

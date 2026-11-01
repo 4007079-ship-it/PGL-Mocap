@@ -14,10 +14,15 @@ def _redirect_output():
 
 
 def _selftest():
-    from pglmocap.paths import exe_dir
+    from pglmocap.paths import exe_dir, settings_dir
     import selftest
     path = exe_dir() / "pgl_mocap_selftest.txt"
-    with open(path, "w", encoding="utf-8", buffering=1) as f:
+    try:
+        f = open(path, "w", encoding="utf-8", buffering=1)
+    except OSError:   # программа установлена в Program Files — пишем в папку настроек
+        path = settings_dir() / "pgl_mocap_selftest.txt"
+        f = open(path, "w", encoding="utf-8", buffering=1)
+    with f:
         ok = selftest.run(lambda s: f.write(s + "\n"))
     return 0 if ok else 1
 

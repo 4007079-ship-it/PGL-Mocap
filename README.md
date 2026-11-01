@@ -25,7 +25,8 @@
 
 | Что | Файл | Для чего |
 |---|---|---|
-| **Windows** 10 / 11 (64-bit) | [PGL_Mocap_win64.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_win64.zip) | программа |
+| **Windows** 10 / 11 — установщик (рекомендуется) | [PGL_Mocap_Setup.exe](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_Setup.exe) | программа с ярлыками и настройкой брандмауэра |
+| **Windows** 10 / 11 — без установки (portable) | [PGL_Mocap_win64.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_win64.zip) | распаковал и запустил, права администратора не нужны |
 | **Linux** x64 — Ubuntu 22.04+, Debian 12+, Mint 21+ | [PGL_Mocap_linux_x64.tar.gz](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_linux_x64.tar.gz) | программа |
 | **Android** 8+ (64-битный телефон) | [PGL_Mocap_android.apk](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGL_Mocap_android.apk) | телефон сам распознаёт позу и отправляет в Aximmetry / Unreal |
 | **Плагин для Unreal Engine** 5.6+ | [PGLMocapLiveLink_UE5_plugin.zip](https://github.com/4007079-ship-it/PGL-Mocap/releases/latest/download/PGLMocapLiveLink_UE5_plugin.zip) | приём данных в Unreal |
@@ -34,9 +35,16 @@
 
 ## Установка
 
-**Windows**
+**Windows — установщик**
+1. Запустите `PGL_Mocap_Setup.exe`. Если Windows покажет «Система Windows защитила ваш компьютер» —
+   нажмите **Подробнее → Выполнить в любом случае** (программа не подписана платным сертификатом).
+2. Оставьте отмеченным пункт **«Разрешить в брандмауэре Windows»** — без него могут не работать NDI и приём данных.
+3. Готово: PGL Mocap появится в меню «Пуск» и на рабочем столе. Новая версия ставится поверх старой,
+   настройки сохраняются. Удаление — через «Параметры → Приложения».
+
+**Windows — без установки**
 1. Распакуйте `PGL_Mocap_win64.zip` в любую папку (например, `C:\PGL Mocap`).
-2. Запустите **`PGL Mocap.exe`**. Устанавливать ничего не нужно.
+2. Запустите **`PGL Mocap.exe`**.
 3. Если Windows спросит про доступ к сети — разрешите (нужно для отправки данных и NDI).
 
 **Linux**
@@ -188,8 +196,9 @@ left_foot_index, right_foot_index`
 - **Android: «Распознавание не поддерживается на этом устройстве»** — нужен телефон с 64-битным ARM-процессором (большинство телефонов с 2017 года).
 - **Android: нет данных на компьютере** — проверьте IP в настройках, что телефон в той же сети Wi-Fi (не гостевой), и что брандмауэр компьютера пропускает UDP.
 - **Linux: нет камеры в списке** — `sudo usermod -aG video $USER` и перезайдите в систему.
-- **Проверка программы** — запустите `PGL Mocap.exe --selftest`: рядом появится файл
-  `pgl_mocap_selftest.txt` с результатами. Журнал ошибок: `%APPDATA%\PGL Mocap\pgl_mocap.log`
+- **Проверка программы** — запустите `PGL Mocap.exe --selftest`: появится файл
+  `pgl_mocap_selftest.txt` с результатами (рядом с программой, а если она установлена в Program Files —
+  в `%APPDATA%\PGL Mocap`). Журнал ошибок: `%APPDATA%\PGL Mocap\pgl_mocap.log`
   (Linux: `~/.config/PGL Mocap/pgl_mocap.log`). Пришлите эти файлы, если нужна помощь.
 
 ---
