@@ -2,6 +2,7 @@
 # Сборка PGL Mocap.app и PGL_Mocap_macOS.dmg (запускается в CI на Mac с Apple Silicon).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+DMG=${1:-PGL_Mocap_macOS.dmg}
 VER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
 BUILD=${GITHUB_RUN_NUMBER:-0}
 
@@ -23,6 +24,7 @@ python -m PyInstaller --noconfirm --clean --windowed \
   --collect-all mediapipe \
   --collect-all cyndilib \
   --hidden-import selftest \
+  --exclude-module jax --exclude-module jaxlib --exclude-module sentencepiece \
   run_pgl_mocap.py
 
 APP="dist/PGL Mocap.app"
@@ -45,6 +47,6 @@ codesign --verify --deep --strict "$APP" && echo "codesign OK"
 rm -rf build/dmg; mkdir -p build/dmg
 cp -R "$APP" build/dmg/
 ln -s /Applications build/dmg/Applications
-rm -f PGL_Mocap_macOS.dmg
-hdiutil create -volname "PGL Mocap" -srcfolder build/dmg -ov -format UDZO PGL_Mocap_macOS.dmg
-ls -la PGL_Mocap_macOS.dmg
+rm -f "$DMG"
+hdiutil create -volname "PGL Mocap" -srcfolder build/dmg -ov -format UDZO "$DMG"
+ls -la "$DMG"
