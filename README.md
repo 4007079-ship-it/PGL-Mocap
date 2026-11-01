@@ -16,7 +16,15 @@
 ## 1. Как получить exe
 
 **Проще всего — скачать готовый:** на главной странице репозитория справа раздел **Releases** →
-последний релиз → **PGL_Mocap_win64.zip**. Распакуйте и запустите `PGL Mocap.exe`.
+последний релиз:
+- **Windows** — `PGL_Mocap_win64.zip`: распакуйте и запустите `PGL Mocap.exe`.
+- **Linux** — `PGL_Mocap_linux_x64.tar.gz` (Ubuntu 22.04+, Debian 12+, Mint 21+ и аналоги):
+  ```
+  tar xzf PGL_Mocap_linux_x64.tar.gz
+  cd "PGL Mocap" && ./"PGL Mocap"
+  ```
+  Чтобы программа появилась в меню приложений — запустите там же `./install_linux.sh`.
+  Камеры и карты захвата берутся через V4L2 (`/dev/video*`); пользователь должен быть в группе `video`.
 Каждое изменение в ветке `main` автоматически собирает новый релиз.
 
 Собрать самому можно двумя способами:
@@ -108,6 +116,7 @@ left_foot_index, right_foot_index`
 - **Aximmetry ничего не получает**: проверьте порт и IP, брандмауэр Windows (разрешите UDP-порт),
   что OSC Server включён в Manage Devices. Проверить отправку без Aximmetry можно монитором:
   `python tools\osc_monitor.py 7000` (Aximmetry при этом закройте — порт может слушать только одна программа).
+- **Linux, нет камеры в списке**: `sudo usermod -aG video $USER` и перелогиньтесь. Для NDI нужен запущенный `avahi-daemon`.
 - **Камера / карта занята**: закройте OBS, Zoom, браузер и т.п., или смените бэкенд.
 - **NDI не видит источники**: компьютеры в одной сети, брандмауэр пропускает NDI; в крайнем случае
   поставьте NDI Tools и используйте *NDI Webcam Input* — тогда NDI будет виден как обычная камера.
@@ -123,5 +132,6 @@ pglmocap/            код: gui, engine (рабочий цикл), sources (к�
 models/              модели MediaPipe (скачиваются build.bat)
 tools/osc_monitor.py проверка приёма OSC
 build.bat            сборка exe
-.github/workflows/   сборка exe в GitHub Actions
+tools/install_linux.sh  ярлык в меню Linux
+.github/workflows/   сборка Windows + Linux и публикация в Releases
 ```

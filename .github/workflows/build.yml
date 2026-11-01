@@ -1,0 +1,172 @@
+name: Build PGL Mocap (Windows + Linux)
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  MODEL_URL: https://storage.googleapis.com/mediapipe-models/pose_landmarker
+  TEST_PHOTO: https://storage.googleapis.com/mediapipe-assets/pose.jpg
+
+jobs:
+  # ------------------------------------------------------------------ Windows
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller==6.22.3
+
+      - name: Download MediaPipe models
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force models | Out-Null
+          foreach ($m in "lite","full","heavy") {
+            Invoke-WebRequest "$env:MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task" -OutFile "models/pose_landmarker_$m.task"
+          }
+
+      - name: Tracking test on a real photo
+        shell: pwsh
+        run: |
+          Invoke-WebRequest $env:TEST_PHOTO -OutFile test_person.jpg
+          $env:PYTHONIOENCODING = "utf-8"
+          python tools/track_image.py test_person.jpg full
+
+      - name: Build exe
+        run: >
+          python -m PyInstaller --noconfirm --clean --windowed
+          --name "PGL Mocap"
+          --icon assets/pgl_mocap.ico
+          --add-data "models;models"
+          --add-data "assets;assets"
+          --collect-all mediapipe
+          --collect-all cyndilib
+          --collect-submodules pygrabber
+          --collect-submodules comtypes
+          --hidden-import selftest
+          run_pgl_mocap.py
+
+      - name: Self-test
+        shell: pwsh
+        run: |
+          Copy-Item README.md "dist/PGL Mocap/README.md"
+          $p = Start-Process -FilePath "dist/PGL Mocap/PGL Mocap.exe" -ArgumentList "--selftest" -Wait -PassThru
+          Get-Content "dist/PGL Mocap/pgl_mocap_selftest.txt"
+          Remove-Item "dist/PGL Mocap/pgl_mocap_selftest.txt"
+          if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit $($p.ExitCode))"; exit 1 }
+
+      - name: Pack zip
+        shell: pwsh
+        run: Compress-Archive -Path "dist/PGL Mocap" -DestinationPath "PGL_Mocap_win64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PGL_Mocap_win64
+          path: PGL_Mocap_win64.zip
+
+  # ------------------------------------------------------------------ Linux
+  linux:
+    # Собираем на Ubuntu 22.04: программа запустится на Ubuntu 22.04+, Debian 12+, Mint 21+ и т.п.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1 libegl1 libgles2 avahi-daemon
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller==6.22.3
+
+      - name: Download MediaPipe models
+        run: |
+          mkdir -p models
+          for m in lite full heavy; do
+            curl -fsSL -o "models/pose_landmarker_$m.task" "$MODEL_URL/pose_landmarker_$m/float16/latest/pose_landmarker_$m.task"
+          done
+
+      - name: Tracking test on a real photo
+        run: |
+          curl -fsSL -o test_person.jpg "$TEST_PHOTO"
+          python tools/track_image.py test_person.jpg full
+
+      - name: GUI smoke test
+        run: |
+          cat > gui_smoke.py <<'EOF'
+          import tkinter as tk
+          from pglmocap.gui import App
+          root = tk.Tk()
+          App(root)
+          root.after(1500, root.destroy)
+          root.mainloop()
+          print("GUI OK")
+          EOF
+          xvfb-run -a python gui_smoke.py
+
+      - name: Build
+        run: >
+          python -m PyInstaller --noconfirm --clean --windowed
+          --name "PGL Mocap"
+          --add-data "models:models"
+          --add-data "assets:assets"
+          --collect-all mediapipe
+          --collect-all cyndilib
+          --hidden-import selftest
+          run_pgl_mocap.py
+
+      - name: Self-test
+        run: |
+          cp README.md "dist/PGL Mocap/README.md"
+          cp tools/install_linux.sh "dist/PGL Mocap/"
+          xvfb-run -a "dist/PGL Mocap/PGL Mocap" --selftest; rc=$?
+          cat "dist/PGL Mocap/pgl_mocap_selftest.txt"
+          rm "dist/PGL Mocap/pgl_mocap_selftest.txt"
+          exit $rc
+
+      - name: Pack tar.gz
+        run: tar -C dist -czf PGL_Mocap_linux_x64.tar.gz "PGL Mocap"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PGL_Mocap_linux_x64
+          path: PGL_Mocap_linux_x64.tar.gz
+
+  # ------------------------------------------------------------------ Release
+  # Готовые архивы публикуются в Releases (главная страница репозитория → справа «Releases»)
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pglmocap/__init__.py)
+          tag="v${ver}-build${GITHUB_RUN_NUMBER}"
+          notes=$(printf 'PGL Mocap %s (сборка %s).\n\n- **Windows:** PGL_Mocap_win64.zip — распакуйте и запустите `PGL Mocap.exe`.\n- **Linux:** PGL_Mocap_linux_x64.tar.gz — распакуйте и запустите `PGL Mocap` (Ubuntu 22.04+ и аналоги).\n\nИнструкция — README.md внутри архива.' "$ver" "$GITHUB_RUN_NUMBER")
+          gh release create "$tag" out/PGL_Mocap_win64.zip out/PGL_Mocap_linux_x64.tar.gz \
+            --title "PGL Mocap $ver (сборка $GITHUB_RUN_NUMBER)" --notes "$notes" --latest --target "$GITHUB_SHA"
