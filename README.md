@@ -269,3 +269,13 @@ pinky_mcp, pinky_pip, pinky_dip, pinky_tip` (`_tip` — кончики паль�
 ---
 
 <sub>В программе используются открытые компоненты: Google MediaPipe и OpenCV (Apache 2.0), cyndilib (MIT), python-osc. NDI® — товарный знак Vizrt NDI AB.</sub>
+
+## Автор
+
+<img src="assets/avatar.png" alt="SMV" width="96" align="left">
+
+**SMV**<br>
+[4007079@gmail.com](mailto:4007079@gmail.com)<br>
+[github.com/4007079-ship-it](https://github.com/4007079-ship-it)
+
+<br clear="left">
